@@ -2205,6 +2205,7 @@ function generatePreviewGLSL() {
     code += '\nvec3 g_lastColor = vec3(0.25, 0.25, 0.3);\n';
 
     const selected = document.getElementsByClassName('selected')[0];
+    const selectedName = selected ? getNodeVarName(selected) : "1e20"; // make distance very far away if nothing selected
     
     // Generate uniform declarations
     code += '\n// Node uniforms\n';
@@ -2229,7 +2230,7 @@ function generatePreviewGLSL() {
     if (children.length === 0) {
         code += `float sceneSDF(vec3 p) {
     g_lastColor = vec3(0.2, 0.2, 0.25);
-    distToSelected = min(distToSelected,${getNodeVarName(selected)});
+    distToSelected = min(distToSelected,${selectedName});
     return 1000.0; // Empty scene
 }`;
     } else if (children.length === 1) {
@@ -2238,7 +2239,7 @@ function generatePreviewGLSL() {
 float sceneSDF(vec3 p) {
 ${generatePreviewNodeCode(children[0], 'p')}
     g_lastColor = ${childVar}_color;
-    distToSelected = min(distToSelected,${getNodeVarName(selected)});
+    distToSelected = min(distToSelected,${selectedName});
     return ${getNodeVarName(children[0])};
 }`;
     } else {
@@ -2263,7 +2264,7 @@ float sceneSDF(vec3 p) {
 ${nodeCode}
 ${unionCode}
     g_lastColor = ${unionColor};
-    distToSelected = min(distToSelected,${getNodeVarName(selected)});
+    distToSelected = min(distToSelected,${selectedName});
     return ${unionExpr};
 }`;
     }
@@ -2854,7 +2855,7 @@ function createShaderProgram(sdfCode) {
             // raymarch selection highlight
             distToSelected = 1e20;
             t = 0.;
-            for (int i = 0; i < 30; i++) {
+            for (int i = 0; i < 60; i++) {
                 vec3 p = ro + rd * t;
                 float _ = sceneSDF(p);
                 if (distToSelected < 0.001) {
