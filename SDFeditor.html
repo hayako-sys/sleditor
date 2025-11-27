@@ -1605,6 +1605,8 @@ function selectNode(node) {
         selectedNode = null;
         renderCurrentParamPanel();
     }
+
+    if(autoCompile) recompilePreview(); // expensive, sorry
 }
 
 function showParamPanel(node) {
@@ -2202,6 +2204,8 @@ function generatePreviewGLSL() {
     
     let code = getSDFPreamble();
     code += '\nvec3 g_lastColor = vec3(0.25, 0.25, 0.3);\n';
+
+    const selected = document.getElementsByClassName('selected')[0];
     
     // Generate uniform declarations
     code += '\n// Node uniforms\n';
@@ -2226,6 +2230,7 @@ function generatePreviewGLSL() {
     if (children.length === 0) {
         code += `float sceneSDF(vec3 p) {
     g_lastColor = vec3(0.2, 0.2, 0.25);
+    distToSelected = ${getNodeVarName(selected)};
     return 1000.0; // Empty scene
 }`;
     } else if (children.length === 1) {
@@ -2234,6 +2239,7 @@ function generatePreviewGLSL() {
 float sceneSDF(vec3 p) {
 ${generatePreviewNodeCode(children[0], 'p')}
     g_lastColor = ${childVar}_color;
+    distToSelected = ${getNodeVarName(selected)};
     return ${getNodeVarName(children[0])};
 }`;
     } else {
@@ -2258,6 +2264,7 @@ float sceneSDF(vec3 p) {
 ${nodeCode}
 ${unionCode}
     g_lastColor = ${unionColor};
+    distToSelected = ${getNodeVarName(selected)};
     return ${unionExpr};
 }`;
     }
@@ -2745,7 +2752,6 @@ function createShaderProgram(sdfCode) {
             gl_Position = vec4(position, 0.0, 1.0);
         }
     `;
-    
     const fragmentShaderSource = `
         precision highp float;
         uniform vec2 resolution;
@@ -2756,6 +2762,7 @@ function createShaderProgram(sdfCode) {
         uniform int u_colorMode;
         uniform int u_lightingMode;
         uniform float u_paletteIndex;
+        float distToSelected = 1e20;
         
         ${sdfCode}
         
@@ -2837,6 +2844,9 @@ function createShaderProgram(sdfCode) {
                         col = surfaceColor * lightAmount;
                     }
                     break;
+                }
+                if (distToSelected < 0.02) {
+                    col = vec3(1);
                 }
                 
                 if (t > 20.0) {
